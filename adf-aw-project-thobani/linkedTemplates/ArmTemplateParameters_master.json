@@ -1,0 +1,24 @@
+{
+	"$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"value": "adf-aw-project-thobani"
+		},
+		"storagedatalake_accountKey": {
+			"value": ""
+		},
+		"httplinkedservice_properties_typeProperties_url": {
+			"value": "https://raw.githubusercontent.com"
+		},
+		"storagedatalake_properties_typeProperties_url": {
+			"value": "https://awstoragedatalakethobani.dfs.core.windows.net/"
+		},
+		"containerUri": {
+			"value": ""
+		},
+		"containerSasToken": {
+			"value": ""
+		}
+	}
+}
