@@ -1,0 +1,15 @@
+{
+	"name": "adf-aw-project-thobani",
+	"properties": {
+		"trustModeClaimForMi": {
+			"value": "Disabled",
+			"editable": true
+		}
+	},
+	"location": "eastus",
+	"identity": {
+		"type": "SystemAssigned",
+		"principalId": "636dd3a6-4619-4148-96d8-8b767988c26e",
+		"tenantId": "1d83489e-e5f1-48b9-b8f7-933198e921ac"
+	}
+}
