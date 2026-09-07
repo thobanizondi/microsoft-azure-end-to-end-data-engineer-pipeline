@@ -3,8 +3,10 @@
 	"properties": {
 		"activities": [
 			{
-				"name": "DynamicDataCopy",
+				"name": "DynamicGitCopy",
 				"type": "Copy",
+				"state": "Inactive",
+				"onInactiveMarkAs": "Succeeded",
 				"dependsOn": [],
 				"policy": {
 					"timeout": "0.12:00:00",
@@ -48,16 +50,57 @@
 				},
 				"inputs": [
 					{
-						"referenceName": "http_git_dynamic_data",
+						"referenceName": "ds_git_dynamic",
 						"type": "DatasetReference"
 					}
 				],
 				"outputs": [
 					{
-						"referenceName": "data_source_raw",
+						"referenceName": "ds_sink_dynamic",
 						"type": "DatasetReference"
 					}
 				]
+			},
+			{
+				"name": "LookupGitData",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "JsonSource",
+						"storeSettings": {
+							"type": "AzureBlobFSReadSettings",
+							"recursive": true,
+							"enablePartitionDiscovery": false
+						},
+						"formatSettings": {
+							"type": "JsonReadSettings"
+						}
+					},
+					"dataset": {
+						"referenceName": "data_source_git_json",
+						"type": "DatasetReference"
+					}
+				}
+			},
+			{
+				"name": "ForEachGitData",
+				"type": "ForEach",
+				"state": "Inactive",
+				"onInactiveMarkAs": "Succeeded",
+				"dependsOn": [],
+				"userProperties": [],
+				"typeProperties": {
+					"isSequential": true
+				}
 			}
 		],
 		"annotations": [],
