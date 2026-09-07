@@ -1,9 +1,9 @@
 {
-	"name": "GitToRaw",
+	"name": "DynamicGitToRaw",
 	"properties": {
 		"activities": [
 			{
-				"name": "CopyRawData",
+				"name": "DynamicDataCopy",
 				"type": "Copy",
 				"dependsOn": [],
 				"policy": {
@@ -48,7 +48,7 @@
 				},
 				"inputs": [
 					{
-						"referenceName": "data_source_http",
+						"referenceName": "http_git_dynamic",
 						"type": "DatasetReference"
 					}
 				],
