@@ -1,0 +1,18 @@
+{
+	"name": "Create Views Gold",
+	"properties": {
+		"description": "This will have views",
+		"content": {
+			"query": "--CREATE VIEW CALENDAR--\n\nCREATE VIEW gold.calendar\nAS \nSELECT \n      *\nFROM OPENROWSET(\n               BULK 'https://awstoragedatalakethobani.blob.core.windows.net/silver/AdventureWorks_Calendar/',\n               FORMAT = 'PARQUET'\n) AS Query_Calendar\n\n\n--CREATE VIEW CUSTOMERS--\nCREATE VIEW gold.customers\nAS \nSELECT \n      *\nFROM OPENROWSET(\n               BULK 'https://awstoragedatalakethobani.blob.core.windows.net/silver/AdventureWorks_Customers/',\n               FORMAT = 'PARQUET'\n) AS Query_Customers\n\n\n--CREATE VIEW Territories--\nCREATE VIEW gold.territories\nAS \nSELECT \n      *\nFROM OPENROWSET(\n               BULK 'https://awstoragedatalakethobani.blob.core.windows.net/silver/AdventureWorks_Territories/',\n               FORMAT = 'PARQUET'\n) AS Query_Territories\n\n\n--CREATE VIEW Product_Categories--\nCREATE VIEW gold.product_categories\nAS \nSELECT \n      *\nFROM OPENROWSET(\n               BULK 'https://awstoragedatalakethobani.blob.core.windows.net/silver/AdventureWorks_Categories/',\n               FORMAT = 'PARQUET'\n) AS Query_Categories\n\n\n--CREATE VIEW Product_Subcategories--\nCREATE VIEW gold.product_subcategories\nAS \nSELECT \n      *\nFROM OPENROWSET(\n               BULK 'https://awstoragedatalakethobani.blob.core.windows.net/silver/AdventureWorks_Product_Subcategories/',\n               FORMAT = 'PARQUET'\n) AS Query_Product_Subcategories\n\n\n--CREATE VIEW Products--\nCREATE VIEW gold.products\nAS \nSELECT \n      *\nFROM OPENROWSET(\n               BULK 'https://awstoragedatalakethobani.blob.core.windows.net/silver/AdventureWorks_Products/',\n               FORMAT = 'PARQUET'\n) AS Query_Products\n\n\n--CREATE VIEW Returns--\nCREATE VIEW gold.returns\nAS \nSELECT \n      *\nFROM OPENROWSET(\n               BULK 'https://awstoragedatalakethobani.blob.core.windows.net/silver/AdventureWorks_Returns/',\n               FORMAT = 'PARQUET'\n) AS Query_Returns\n\n--CREATE VIEW Sales--\nCREATE VIEW gold.sales\nAS \nSELECT \n      *\nFROM OPENROWSET(\n               BULK 'https://awstoragedatalakethobani.blob.core.windows.net/silver/AdventureWorks_Sales/',\n               FORMAT = 'PARQUET'\n) AS Query_Sales\n\n\n",
+			"metadata": {
+				"language": "sql"
+			},
+			"currentConnection": {
+				"databaseName": "awdatabase",
+				"poolName": "Built-in"
+			},
+			"resultLimit": 5000
+		},
+		"type": "SqlQuery"
+	}
+}
