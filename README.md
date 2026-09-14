@@ -90,7 +90,24 @@ Azure Synapse Analytics models the Silver data into curated, analytics-ready tab
 Supports business-focused querying and reporting (e.g. sales performance, product, customer, and regional analysis).
 
 ### Reporting
-Power BI connects to the Gold layer for interactive dashboards and business reporting.
+Power BI connects to the **Gold layer in Azure Synapse Analytics** to provide interactive dashboards and business reporting.
+
+The report includes two analytical pages:
+
+#### Sales Overview
+
+The **Sales Overview** page provides a high-level view of sales performance, revenue trends, and key business metrics.
+
+[![Sales Overview](./power_bi/sales_overview.png)](./power_bi/sales_overview.png)
+
+#### Product Performance
+
+The **Product Performance** page provides detailed analysis of product and category performance, including revenue trends and comparisons across product categories.
+
+[![Product Performance](./power_bi/product_perfomance.png)](./power_bi/product_perfomance.png)
+
+These dashboards demonstrate how the curated Gold-layer data is consumed in Power BI to support business-focused analysis and reporting.
+
 
 ## Technologies Used
 - **Ingestion:** Azure Data Factory
