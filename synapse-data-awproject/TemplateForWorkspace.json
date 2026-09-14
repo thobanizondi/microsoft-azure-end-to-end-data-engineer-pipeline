@@ -1,0 +1,490 @@
+{
+	"$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"workspaceName": {
+			"type": "string",
+			"metadata": "Workspace name",
+			"defaultValue": "synapse-data-awproject"
+		},
+		"storagedatalake_accountKey": {
+			"type": "secureString",
+			"metadata": "Secure string for 'accountKey' of 'storagedatalake'"
+		},
+		"synapse-data-awproject-WorkspaceDefaultSqlServer_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'synapse-data-awproject-WorkspaceDefaultSqlServer'",
+			"defaultValue": "Integrated Security=False;Encrypt=True;Connection Timeout=30;Data Source=tcp:synapse-data-awproject.sql.azuresynapse.net,1433;Initial Catalog=@{linkedService().DBName}"
+		},
+		"httplinkedservice_properties_typeProperties_url": {
+			"type": "string",
+			"defaultValue": "https://raw.githubusercontent.com"
+		},
+		"storagedatalake_properties_typeProperties_url": {
+			"type": "string",
+			"defaultValue": "https://awstoragedatalakethobani.dfs.core.windows.net/"
+		},
+		"synapse-data-awproject-WorkspaceDefaultStorage_properties_typeProperties_url": {
+			"type": "string",
+			"defaultValue": "https://defualtasaynapseccount.dfs.core.windows.net"
+		}
+	},
+	"variables": {
+		"workspaceId": "[concat('Microsoft.Synapse/workspaces/', parameters('workspaceName'))]"
+	},
+	"resources": [
+		{
+			"name": "[concat(parameters('workspaceName'), '/DynamicGitToRaw')]",
+			"type": "Microsoft.Synapse/workspaces/pipelines",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"activities": [
+					{
+						"name": "LookupGitData",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "JsonSource",
+								"storeSettings": {
+									"type": "AzureBlobFSReadSettings",
+									"recursive": true,
+									"enablePartitionDiscovery": false
+								},
+								"formatSettings": {
+									"type": "JsonReadSettings"
+								}
+							},
+							"dataset": {
+								"referenceName": "data_source_git_json",
+								"type": "DatasetReference",
+								"parameters": {}
+							},
+							"firstRowOnly": false
+						}
+					},
+					{
+						"name": "ForEachGitData",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "LookupGitData",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('LookupGitData').output.value",
+								"type": "Expression"
+							},
+							"isSequential": true,
+							"activities": [
+								{
+									"name": "DynamicGitCopy",
+									"type": "Copy",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "DelimitedTextSource",
+											"storeSettings": {
+												"type": "HttpReadSettings",
+												"requestMethod": "GET"
+											},
+											"formatSettings": {
+												"type": "DelimitedTextReadSettings"
+											}
+										},
+										"sink": {
+											"type": "DelimitedTextSink",
+											"storeSettings": {
+												"type": "AzureBlobFSWriteSettings"
+											},
+											"formatSettings": {
+												"type": "DelimitedTextWriteSettings",
+												"quoteAllText": true,
+												"fileExtension": ".txt"
+											}
+										},
+										"enableStaging": false,
+										"translator": {
+											"type": "TabularTranslator",
+											"typeConversion": true,
+											"typeConversionSettings": {
+												"allowDataTruncation": true,
+												"treatBooleanAsNumber": false
+											}
+										}
+									},
+									"inputs": [
+										{
+											"referenceName": "ds_git_dynamic",
+											"type": "DatasetReference",
+											"parameters": {
+												"p_rel_url": {
+													"value": "@item().p_relative_url",
+													"type": "Expression"
+												}
+											}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "ds_sink_dynamic",
+											"type": "DatasetReference",
+											"parameters": {
+												"p_sink_folder": {
+													"value": "@item().p_sink_folder",
+													"type": "Expression"
+												},
+												"p_file_name": {
+													"value": "@item().p_file_name",
+													"type": "Expression"
+												}
+											}
+										}
+									]
+								}
+							]
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"annotations": [],
+				"lastPublishTime": "2026-09-02T12:14:20Z"
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/datasets/data_source_git_json')]",
+				"[concat(variables('workspaceId'), '/datasets/ds_git_dynamic')]",
+				"[concat(variables('workspaceId'), '/datasets/ds_sink_dynamic')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/data_source_git_json')]",
+			"type": "Microsoft.Synapse/workspaces/datasets",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "storagedatalake",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "Json",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileName": "git.json",
+						"fileSystem": "parameters"
+					}
+				},
+				"schema": {
+					"type": "object",
+					"properties": {
+						"p_relative_url": {
+							"type": "string"
+						},
+						"p_sink_folder": {
+							"type": "string"
+						},
+						"p_file_name": {
+							"type": "string"
+						}
+					}
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/linkedServices/storagedatalake')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/data_source_http')]",
+			"type": "Microsoft.Synapse/workspaces/datasets",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "httplinkedservice",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "HttpServerLocation",
+						"relativeUrl": "thobanizondi/microsoft-azure-end-to-end-data-engineer-pipeline/refs/heads/main/data/AdventureWorks_Products.csv"
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/linkedServices/httplinkedservice')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/ds_git_dynamic')]",
+			"type": "Microsoft.Synapse/workspaces/datasets",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "httplinkedservice",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"p_rel_url": {
+						"type": "String"
+					}
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "HttpServerLocation",
+						"relativeUrl": {
+							"value": "@dataset().p_rel_url",
+							"type": "Expression"
+						}
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/linkedServices/httplinkedservice')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/ds_sink_dynamic')]",
+			"type": "Microsoft.Synapse/workspaces/datasets",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "storagedatalake",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"p_sink_folder": {
+						"type": "String"
+					},
+					"p_file_name": {
+						"type": "String"
+					}
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileName": {
+							"value": "@dataset().p_file_name",
+							"type": "Expression"
+						},
+						"folderPath": {
+							"value": "@dataset().p_sink_folder",
+							"type": "Expression"
+						},
+						"fileSystem": "bronze"
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/linkedServices/storagedatalake')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/httplinkedservice')]",
+			"type": "Microsoft.Synapse/workspaces/linkedServices",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"annotations": [],
+				"type": "HttpServer",
+				"typeProperties": {
+					"url": "[parameters('httplinkedservice_properties_typeProperties_url')]",
+					"enableServerCertificateValidation": true,
+					"authenticationType": "Anonymous"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/storagedatalake')]",
+			"type": "Microsoft.Synapse/workspaces/linkedServices",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"annotations": [],
+				"type": "AzureBlobFS",
+				"typeProperties": {
+					"url": "[parameters('storagedatalake_properties_typeProperties_url')]",
+					"accountKey": {
+						"type": "SecureString",
+						"value": "[parameters('storagedatalake_accountKey')]"
+					}
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/synapse-data-awproject-WorkspaceDefaultSqlServer')]",
+			"type": "Microsoft.Synapse/workspaces/linkedServices",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"parameters": {
+					"DBName": {
+						"type": "String"
+					}
+				},
+				"annotations": [],
+				"type": "AzureSqlDW",
+				"typeProperties": {
+					"connectionString": "[parameters('synapse-data-awproject-WorkspaceDefaultSqlServer_connectionString')]"
+				},
+				"connectVia": {
+					"referenceName": "AutoResolveIntegrationRuntime",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/integrationRuntimes/AutoResolveIntegrationRuntime')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/synapse-data-awproject-WorkspaceDefaultStorage')]",
+			"type": "Microsoft.Synapse/workspaces/linkedServices",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"annotations": [],
+				"type": "AzureBlobFS",
+				"typeProperties": {
+					"url": "[parameters('synapse-data-awproject-WorkspaceDefaultStorage_properties_typeProperties_url')]"
+				},
+				"connectVia": {
+					"referenceName": "AutoResolveIntegrationRuntime",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/integrationRuntimes/AutoResolveIntegrationRuntime')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/AutoResolveIntegrationRuntime')]",
+			"type": "Microsoft.Synapse/workspaces/integrationRuntimes",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"type": "Managed",
+				"typeProperties": {
+					"computeProperties": {
+						"location": "AutoResolve",
+						"dataFlowProperties": {
+							"computeType": "General",
+							"coreCount": 8,
+							"timeToLive": 0
+						}
+					}
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/WorkspaceSystemIdentity')]",
+			"type": "Microsoft.Synapse/workspaces/credentials",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"type": "ManagedIdentity",
+				"typeProperties": {}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/Create Schema')]",
+			"type": "Microsoft.Synapse/workspaces/sqlscripts",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"content": {
+					"query": "CREATE SCHEMA gold;",
+					"metadata": {
+						"language": "sql"
+					},
+					"currentConnection": {
+						"databaseName": "awdatabase",
+						"poolName": "Built-in"
+					},
+					"resultLimit": 5000
+				},
+				"type": "SqlQuery"
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/Create Views Gold')]",
+			"type": "Microsoft.Synapse/workspaces/sqlscripts",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"description": "This will have views",
+				"content": {
+					"query": "--CREATE VIEW CALENDAR--\n\nCREATE VIEW gold.calendar\nAS \nSELECT \n      *\nFROM OPENROWSET(\n               BULK 'https://awstoragedatalakethobani.blob.core.windows.net/silver/AdventureWorks_Calendar/',\n               FORMAT = 'PARQUET'\n) AS Query_Calendar\n\n\n--CREATE VIEW CUSTOMERS--\nCREATE VIEW gold.customers\nAS \nSELECT \n      *\nFROM OPENROWSET(\n               BULK 'https://awstoragedatalakethobani.blob.core.windows.net/silver/AdventureWorks_Customers/',\n               FORMAT = 'PARQUET'\n) AS Query_Customers\n\n\n--CREATE VIEW Territories--\nCREATE VIEW gold.territories\nAS \nSELECT \n      *\nFROM OPENROWSET(\n               BULK 'https://awstoragedatalakethobani.blob.core.windows.net/silver/AdventureWorks_Territories/',\n               FORMAT = 'PARQUET'\n) AS Query_Territories\n\n\n--CREATE VIEW Product_Categories--\nCREATE VIEW gold.product_categories\nAS \nSELECT \n      *\nFROM OPENROWSET(\n               BULK 'https://awstoragedatalakethobani.blob.core.windows.net/silver/AdventureWorks_Categories/',\n               FORMAT = 'PARQUET'\n) AS Query_Categories\n\n\n--CREATE VIEW Product_Subcategories--\nCREATE VIEW gold.product_subcategories\nAS \nSELECT \n      *\nFROM OPENROWSET(\n               BULK 'https://awstoragedatalakethobani.blob.core.windows.net/silver/AdventureWorks_Product_Subcategories/',\n               FORMAT = 'PARQUET'\n) AS Query_Product_Subcategories\n\n\n--CREATE VIEW Products--\nCREATE VIEW gold.products\nAS \nSELECT \n      *\nFROM OPENROWSET(\n               BULK 'https://awstoragedatalakethobani.blob.core.windows.net/silver/AdventureWorks_Products/',\n               FORMAT = 'PARQUET'\n) AS Query_Products\n\n\n--CREATE VIEW Returns--\nCREATE VIEW gold.returns\nAS \nSELECT \n      *\nFROM OPENROWSET(\n               BULK 'https://awstoragedatalakethobani.blob.core.windows.net/silver/AdventureWorks_Returns/',\n               FORMAT = 'PARQUET'\n) AS Query_Returns\n\n--CREATE VIEW Sales--\nCREATE VIEW gold.sales\nAS \nSELECT \n      *\nFROM OPENROWSET(\n               BULK 'https://awstoragedatalakethobani.blob.core.windows.net/silver/AdventureWorks_Sales/',\n               FORMAT = 'PARQUET'\n) AS Query_Sales\n\n\n",
+					"metadata": {
+						"language": "sql"
+					},
+					"currentConnection": {
+						"databaseName": "awdatabase",
+						"poolName": "Built-in"
+					},
+					"resultLimit": 5000
+				},
+				"type": "SqlQuery"
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/External Table Query')]",
+			"type": "Microsoft.Synapse/workspaces/sqlscripts",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"content": {
+					"query": "\n--Creating external data source for silver layer\nCREATE DATABASE SCOPED CREDENTIAL cred_zondi\nWITH\n    IDENTITY = 'Managed Identity'\n\nCREATE EXTERNAL DATA SOURCE source_silver_layer\nWITH\n(\n    LOCATION = 'https://awstoragedatalakethobani.blob.core.windows.net/silver',\n    CREDENTIAL = cred_zondi\n)\n\n\n--Creating external data source for gold layer\nCREATE EXTERNAL DATA SOURCE source_gold_layer\nWITH\n(\n    LOCATION = 'https://awstoragedatalakethobani.blob.core.windows.net/gold',\n    CREDENTIAL = cred_zondi\n)\n\n--Creating external file format\nCREATE EXTERNAL FILE FORMAT format_parquet\nWITH\n(\n    FORMAT_TYPE = PARQUET,\n    DATA_COMPRESSION = 'org.apache.hadoop.io.compress.SnappyCodec'\n)\n\n\n--CREATE EXTERNSL TABLE EXTSALES--\nCREATE EXTERNAL TABLE gold.extsales\nWITH\n(\n    LOCATION = 'extsales',\n    DATA_SOURCE = source_gold,\n    FILE_FORMAT = format_parquet\n) \nAS\nSELECT \n     *\nFROM gold.sales\n\n\n--CREATE EXTERNAL TABLE EXTCALENDAR--\nCREATE EXTERNAL TABLE gold.extcalendar\nWITH\n(\n    LOCATION = 'extcalendar',\n    DATA_SOURCE = source_gold,\n    FILE_FORMAT = format_parquet\n) \nAS\nSELECT \n     *\nFROM gold.calendar\n\n\n\n--CREATE EXTERNAL TABLE EXTCUSTOMERS--\nCREATE EXTERNAL TABLE gold.extcustomers\nWITH\n(\n    LOCATION = 'extcustomers',\n    DATA_SOURCE = source_gold,\n    FILE_FORMAT = format_parquet\n) \nAS\nSELECT \n     *\nFROM gold.customers\n\n\n\n--CREATE EXTERNAL TABLE EXTPRODUCTS--\nCREATE EXTERNAL TABLE gold.extproducts\nWITH\n(\n    LOCATION = 'extproducts',\n    DATA_SOURCE = source_gold,\n    FILE_FORMAT = format_parquet\n) \nAS\nSELECT \n     *\nFROM gold.products\n\n\n\n--CREATE EXTERNAL TABLE EXTPRODUCT_CATEGORIES--\nCREATE EXTERNAL TABLE gold.extproduct_categories\nWITH\n(\n    LOCATION = 'gold.extproduct_categories',\n    DATA_SOURCE = source_gold,\n    FILE_FORMAT = format_parquet\n) \nAS\nSELECT \n     *\nFROM gold.extproduct_categories\n\n--CREATE EXTERNAL TABLE EXTPRODUCT_SUBCATEGORIES--\nCREATE EXTERNAL TABLE gold.extproduct_subcategories\nWITH\n(\n    LOCATION = 'gold.extproduct_subcategories',\n    DATA_SOURCE = source_gold,\n    FILE_FORMAT = format_parquet\n) \nAS\nSELECT \n     *\nFROM gold.extproduct_subcategories\n\n\n\n\n--CREATE EXTERNAL TABLE EXTRETURNS--\nCREATE EXTERNAL TABLE gold.extreturns\nWITH\n(\n    LOCATION = 'extreturns',\n    DATA_SOURCE = source_gold,\n    FILE_FORMAT = format_parquet\n) \nAS\nSELECT \n     *\nFROM gold.returns\n\n\n--CREATE EXTERNAL TABLE EXTERRIITORIES--\nCREATE EXTERNAL TABLE gold.extterritories\nWITH\n(\n    LOCATION = 'extterritories',\n    DATA_SOURCE = source_gold,\n    FILE_FORMAT = format_parquet\n) \nAS\nSELECT \n     *\nFROM gold.territories\n\n",
+					"metadata": {
+						"language": "sql"
+					},
+					"currentConnection": {
+						"databaseName": "awdatabase",
+						"poolName": "Built-in"
+					},
+					"resultLimit": 5000
+				},
+				"type": "SqlQuery"
+			},
+			"dependsOn": []
+		}
+	]
+}
